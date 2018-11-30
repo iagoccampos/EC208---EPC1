@@ -80,26 +80,31 @@ struct memCache
 		}
 	}
 	
-	void pushMemory(){
+	void pushMemory(int pc){
 		int size = sizeof(progMem)/sizeof(int);
-		
-		for(int i = 0; i < size; i++){
-			int line = i & (blockCount - 1); 			//MOD 8
-			int wordPos = (i >>  blockEndSize) & (int)(pow(2,wordEndSize) - 1);
+		int count = 0;
+		//Aloca na cache o pc e o próximo pc
+		for(int i = pc; i < size; i++){
+			int line = (i >> wordEndSize)  & (blockCount - 1); 			//MOD 8
+			int wordPos = i & (int)(pow(2,wordEndSize) - 1);
 			int tag = (i >> blockEndSize + wordEndSize) & (int)(pow(2, tagSize) - 1);
 			
 			blocks[line].valid = 1;						//Set valid
 			blocks[line].tag = tag;						//Atribui a TAG
 			blocks[line].instr[wordPos] = progMem[i];	//Preenche a word com o comando
+			
+			count++;
+			if(count == wordsPerBlock)
+				break;
 		}
 	}
 	
 	int getInstr(int pc){
-		int line = pc & (blockCount - 1); 	//Faz o cálculo da linha, MOD 8
+		int line = (pc >> wordEndSize) & (blockCount - 1); 	//Faz o cálculo da linha, MOD 8
 		if(blocks[line].valid == 1){ 		//Se a valid da linha for 1
 			int tag = (pc >> blockEndSize + wordEndSize) & (int)(pow(2, tagSize) - 1); //Calcula a tag
 			if(blocks[line].tag == tag){	
-				int wordPos = (pc >>  blockEndSize) & (int)(pow(2,wordEndSize) - 1);
+				int wordPos = pc & (int)(pow(2,wordEndSize) - 1);
 				return blocks[line].instr[wordPos];
 			}
 			else{
@@ -154,10 +159,12 @@ int main(void)
 	
 	while(pc < programLen)
 	{
+		cout << "PC: " << pc << endl;
 		currentInstr = memC.getInstr(pc);
 		
 		if(currentInstr == -1){
-			memC.pushMemory();
+			cout << "Miss, realocando..." << endl;
+			memC.pushMemory(pc);
 			currentInstr = memC.getInstr(pc);
 		}
 		
@@ -166,9 +173,9 @@ int main(void)
 		pc++;
 	}
 	
-	memC.showCache();
+	//memC.showCache();
 	
-	cout << memory[1] << endl;
+	cout << "Resultado: " << memory[1] << endl;
 
 	return 0;
 }
